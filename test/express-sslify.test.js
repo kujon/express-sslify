@@ -305,6 +305,62 @@ describe('express-sslify', function() {
 		proxyTests('head');
 	})
 
+	describe('Exclusions', function() {
+
+		var app = express();
+
+		app.use(enforce.HTTPS({ignore: [/^\/foo\/?$/, /^\/foo-head\/?$/]}));
+
+		app.get('/foo',
+			function(req, res){
+				res.status(200).send('ok');
+		});
+
+		app.head('/foo-head',
+			function(req, res){
+				res.status(200).send();
+		});
+
+		app.get('/qux',
+			function(req, res){
+				res.status(200).send('ok');
+		});
+
+		app.head('/qux-head',
+			function(req, res){
+				res.status(200).send();
+		});
+
+		var agent = request.agent(app);
+
+		it('should not redirect non-SSL GET requests to HTTPS if any of the regular expressions match', function (done) {
+			agent
+				.get('/foo')
+				.expect(200, 'ok', done);
+		})
+
+		it('should not redirect non-SSL HEAD requests to HTTPS if any of the regular expressions match', function (done) {
+			agent
+				.head('/foo-head')
+				.expect(200, done);
+		})
+
+		it('should redirect any remaining non-SSL GET requests to HTTPS', function (done) {
+			agent
+				.get('/qux')
+				.expect(301)
+				.expect('location', new RegExp('^https://[\\S]*/qux$'), done);
+		})
+
+		it('should redirect any remaining non-SSL HEAD requests to HTTPS', function (done) {
+			agent
+				.head('/qux')
+				.expect(301)
+				.expect('location', new RegExp('^https://[\\S]*/qux$'), done);
+		})
+
+	})
+
 	describe('Pre-1.0.0-style arguments', function() {
 
 		var app = express();

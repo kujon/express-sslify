@@ -3,7 +3,8 @@
 var defaults = {
 	trustProtoHeader: false,
 	trustAzureHeader: false,
-	trustXForwardedHostHeader: false
+	trustXForwardedHostHeader: false,
+	ignore: []
 };
 
 /**
@@ -56,7 +57,18 @@ var enforceHTTPS = function(options) {
 			isHttps = true;
 		}
 
-		if(isHttps) {
+		var shouldIgnore = false;
+		if(!isHttps) {
+			shouldIgnore = options.ignore
+				.map(function(regexp) {
+					return regexp.test(req.originalUrl);
+				})
+				.some(function(matches) {
+					return Boolean(matches);
+				});
+		}
+
+		if(isHttps || shouldIgnore) {
 			next();
 		} else {
 			// Only redirect GET methods
